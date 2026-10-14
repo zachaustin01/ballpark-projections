@@ -20,6 +20,7 @@ const fmtTime = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
 const COLS: [string, string][] = [["PA", "PA"], ["EV", "EV"], ["Brl%", "Brl%"], ["HH%", "HH%"], ["HR", "HR"], ["Foul/PA", "F/PA"]];
+const OPTIONAL = new Set(["PA", "HH%"]); // hidden on narrow screens so batter names fit
 const fmt = (v: number | null | undefined) => (v == null ? "–" : String(v));
 
 function Help({ open = false, days = 365 }: { open?: boolean; days?: number }) {
@@ -60,12 +61,12 @@ function Lineup({ side, fx }: { side: TeamSide; fx: Record<string, number> }) {
         <>
           {proj && <p className="badge">Lineup {side.lineup_source}</p>}
           <table>
-            <thead><tr><th>#</th><th>Batter</th>{COLS.map(([, l]) => <th key={l}>{l}</th>)}<th>xHR</th></tr></thead>
+            <thead><tr><th>#</th><th>Batter</th>{COLS.map(([k, l]) => <th key={l} className={OPTIONAL.has(k) ? "opt" : undefined}>{l}</th>)}<th>xHR</th></tr></thead>
             <tbody>
               {side.lineup.map((b) => (
                 <tr key={b.id}>
                   <td>{b.slot}</td><td>{b.name}</td>
-                  {COLS.map(([k]) => <td key={k}>{fmt((b.stats as Stats)[k])}</td>)}
+                  {COLS.map(([k]) => <td key={k} className={OPTIONAL.has(k) ? "opt" : undefined}>{fmt((b.stats as Stats)[k])}</td>)}
                   <td>{fx[b.name] != null ? fx[b.name].toFixed(2) : "–"}</td>
                 </tr>
               ))}

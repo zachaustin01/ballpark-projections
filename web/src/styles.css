@@ -44,7 +44,13 @@ th:nth-child(2), td:nth-child(2) { text-align: left; } th:first-child, td:first-
 @media (max-width: 860px) {
   main { grid-template-columns: 1fr; padding: 14px 16px; } .two, .viz-body { grid-template-columns: 1fr; }
   .games { flex-direction: row; overflow-x: auto; } .gcard { min-width: 250px; } .top { padding: 10px 16px; }
-  table { font-size: 12px; } th, td { padding: 4px 3px; }
+  table { font-size: 12.5px; } th, td { padding: 6px 3px; } .opt { display: none; }
+  /* comfortable touch targets */
+  button, select { min-height: 44px; }
+  .datebar button { min-width: 44px; }
+  .seg button { padding: 10px 14px; }
+  .zone-btn { min-height: 44px; padding: 10px 8px; }
+  .link { min-height: 0; }
 }
 
 .help summary { cursor: pointer; font-weight: 600; }
