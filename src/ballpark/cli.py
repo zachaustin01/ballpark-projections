@@ -34,7 +34,7 @@ def cmd_slate(a):
             for i, b in enumerate(side["lineup"], 1):
                 st = {} if a.no_stats else sc.summarize(sc.pull_batter(b["id"], start, end), "batter")
                 rows.append({"role": str(i), "name": b["name"], **st})
-            print(f"\n{side['team']}" + ("" if side["lineup"] else "  (lineup not posted)"))
+            print(f"\n{side['team']}" + (f"  ({side['lineup_source']})" if side["lineup"] and side["lineup_source"] != "posted" else "" if side["lineup"] else "  (no lineup)"))
             if rows:
                 print(pd.DataFrame(rows).to_string(index=False))
 

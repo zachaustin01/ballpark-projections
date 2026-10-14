@@ -86,7 +86,7 @@ def batter_zones(bdf, park, seatmap, pitcher_hr, pitcher_foul, slot_pa):
             gen = _generic_zone(j["angle"].to_numpy(), j["dist"].to_numpy(), fence, kind).to_numpy()
             zone = gen if zone is None else np.where(pd.isna(zone), gen, zone)
         out.append(pd.DataFrame({
-            "kind": kind, "zone": zone,
+            "kind": kind, "zone": zone, "x": x, "y": y,
             "exp": j["w"].to_numpy() / pa * slot_pa * factor,
         }))
     return pd.concat(out) if out else pd.DataFrame()
@@ -131,5 +131,5 @@ def project_game(game, park, date, days=365):
                 z["batter"], z["team"] = b["name"], game[bat_side]["team"]
                 frames.append(z)
     if not frames:
-        return pd.DataFrame(columns=["kind", "zone", "exp"])
+        return pd.DataFrame(columns=["kind", "zone", "x", "y", "exp"])
     return pd.concat(frames)
