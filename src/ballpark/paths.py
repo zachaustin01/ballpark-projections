@@ -7,3 +7,5 @@ SEATMAPS = DATA / "seatmaps"
 OUTPUT = ROOT / "output"
 for p in (CACHE, SEATMAPS, OUTPUT):
     p.mkdir(parents=True, exist_ok=True)
+
+WEB_DATA = ROOT / "web" / "public" / "data"

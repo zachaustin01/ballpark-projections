@@ -3,3 +3,7 @@ __pycache__/
 data/cache/
 output/
 *.egg-info/
+web/node_modules/
+web/dist/
+web/public/data/
+.firebase/
