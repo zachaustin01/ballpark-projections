@@ -79,6 +79,32 @@ def cmd_export(a):
     export_range(start, end, a.days, a.game)
 
 
+def cmd_research(a):
+    """Local-only research tooling. Imported lazily: needs `uv sync --group research` and
+    must never be reachable from the CI/export path."""
+    import json
+    from dataclasses import fields
+    from .research import backtest, data
+    if a.rcmd == "sync":
+        data.sync_seasons([int(y) for y in a.seasons] if a.seasons else None)
+        from .research import games
+        games.load_games(refresh=True)
+        games.load_venues(refresh=True)
+    elif a.rcmd == "ablate":
+        from .research import ablations
+        df = ablations.run(a.test_year)
+        print(df.round(4).to_string(index=False))
+        df.to_csv(OUTPUT / "backtests" / f"classifier_ablation_{a.test_year}.csv", index=False)
+    elif a.rcmd == "report":
+        from .research import report
+        print(report.render(a.name))
+    elif a.rcmd == "backtest":
+        from .research.engine import Params
+        params = Params(**json.loads(open(a.params).read())) if a.params else None
+        backtest.run(a.name, a.test_start, a.test_end, a.train_through, a.every, params,
+                     a.tune, not a.no_v0, a.with_dist)
+
+
 def main():
     ap = argparse.ArgumentParser(prog="ballpark")
     sub = ap.add_subparsers(required=True)
@@ -103,5 +129,24 @@ def main():
     p.add_argument("--days", type=int, default=365)
     p.add_argument("--game", type=int, help="only this gamePk (testing)")
     p.set_defaults(fn=cmd_export)
+    p = sub.add_parser("research", help="LOCAL ONLY: historical store + backtesting (never run in CI)")
+    rs = p.add_subparsers(dest="rcmd", required=True)
+    q = rs.add_parser("sync", help="backfill the research Statcast store + game/venue tables")
+    q.add_argument("--seasons", nargs="*")
+    q = rs.add_parser("ablate", help="ball-level HR classifier ablations (distance, venue id, temperature)")
+    q.add_argument("--test-year", type=int, default=2024)
+    q = rs.add_parser("report", help="render report.md/PNGs for a finished backtest")
+    q.add_argument("name")
+    q = rs.add_parser("backtest", help="walk-forward backtest of v0 and the candidate model")
+    q.add_argument("--name", required=True)
+    q.add_argument("--test-start", required=True)
+    q.add_argument("--test-end", required=True)
+    q.add_argument("--train-through", type=int, required=True, help="HR classifier uses seasons <= this")
+    q.add_argument("--every", type=int, default=7, help="run slow v0 on every Nth day")
+    q.add_argument("--tune", action="store_true", help="fit shrinkage/kernel params on this window")
+    q.add_argument("--params", help="params.json from a previous --tune run (frozen)")
+    q.add_argument("--no-v0", action="store_true")
+    q.add_argument("--with-dist", action="store_true", help="classifier may use hit distance")
+    p.set_defaults(fn=cmd_research)
     a = ap.parse_args()
     a.fn(a)
