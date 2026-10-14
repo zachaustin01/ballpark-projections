@@ -3,10 +3,9 @@ from datetime import date, timedelta
 
 import numpy as np
 import pandas as pd
-from pybaseball import statcast_batter, statcast_pitcher
 
 from .geometry import spray
-from .paths import CACHE
+from . import store
 
 FOUL = {"foul", "foul_tip", "foul_bunt"}
 
@@ -16,22 +15,14 @@ def window(game_date: str, days: int) -> tuple[str, str]:
     return (d - timedelta(days=days)).isoformat(), (d - timedelta(days=1)).isoformat()
 
 
-def _pull(kind: str, player_id: int, start: str, end: str) -> pd.DataFrame:
-    f = CACHE / f"{kind}_{player_id}_{start}_{end}.parquet"
-    if f.exists():
-        return pd.read_parquet(f)
-    fn = statcast_batter if kind == "batter" else statcast_pitcher
-    df = fn(start, end, player_id)
-    df.to_parquet(f)
-    return df
-
-
 def pull_batter(pid, start, end):
-    return prep(_pull("batter", pid, start, end))
+    df = store.load(start, end)
+    return prep(df[df["batter"] == pid])
 
 
 def pull_pitcher(pid, start, end):
-    return prep(_pull("pitcher", pid, start, end))
+    df = store.load(start, end)
+    return prep(df[df["pitcher"] == pid])
 
 
 def prep(df: pd.DataFrame) -> pd.DataFrame:

@@ -1,5 +1,5 @@
 import argparse
-from datetime import date
+from datetime import date, timedelta
 
 import pandas as pd
 
@@ -34,7 +34,7 @@ def cmd_slate(a):
             for i, b in enumerate(side["lineup"], 1):
                 st = {} if a.no_stats else sc.summarize(sc.pull_batter(b["id"], start, end), "batter")
                 rows.append({"role": str(i), "name": b["name"], **st})
-            print(f"\n{side['team']}" + ("" if side["lineup"] else "  (lineup not posted)"))
+            print(f"\n{side['team']}" + (f"  ({side['lineup_source']})" if side["lineup"] and side["lineup_source"] != "posted" else "" if side["lineup"] else "  (no lineup)"))
             if rows:
                 print(pd.DataFrame(rows).to_string(index=False))
 
@@ -63,6 +63,22 @@ def cmd_project(a):
             print(z.head(a.top).assign(exp=lambda d: d.exp.round(3)).to_string(index=False))
 
 
+def cmd_sync(a):
+    from . import store
+    end = a.through or (date.today() - timedelta(days=1)).isoformat()
+    start = (date.fromisoformat(end) - timedelta(days=a.days)).isoformat()
+    n = store.sync(start, end)
+    print(f"done ({n} days fetched)")
+
+
+def cmd_export(a):
+    from .export import export_range
+    today = date.today()
+    start = a.date or today.isoformat()
+    end = a.through or (today + timedelta(days=1)).isoformat() if not a.date else (a.through or a.date)
+    export_range(start, end, a.days, a.game)
+
+
 def main():
     ap = argparse.ArgumentParser(prog="ballpark")
     sub = ap.add_subparsers(required=True)
@@ -77,5 +93,15 @@ def main():
         else:
             p.add_argument("--game", type=int, help="gamePk")
             p.add_argument("--top", type=int, default=12)
+    p = sub.add_parser("sync", help="update the local league-wide Statcast store")
+    p.add_argument("--days", type=int, default=365)
+    p.add_argument("--through", help="last day to fetch (default: yesterday)")
+    p.set_defaults(fn=cmd_sync)
+    p = sub.add_parser("export", help="write static JSON for the web front end")
+    p.add_argument("--date", help="start date (default: today)")
+    p.add_argument("--through", help="end date inclusive (default: --date, or tomorrow if no --date)")
+    p.add_argument("--days", type=int, default=365)
+    p.add_argument("--game", type=int, help="only this gamePk (testing)")
+    p.set_defaults(fn=cmd_export)
     a = ap.parse_args()
     a.fn(a)

@@ -1,5 +1,10 @@
 .venv/
 __pycache__/
-data/cache/
+data/statcast/
 output/
 *.egg-info/
+web/node_modules/
+web/dist/
+web/public/data/
+.firebase/
+data/cache/

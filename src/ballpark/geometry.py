@@ -23,11 +23,18 @@ def to_xy(angle, dist):
     return dist * np.sin(r), dist * np.cos(r)
 
 
+def fence_profile(park) -> list[float]:
+    """The 7 published fence distances, with gaps (MLB omits some points, e.g. Dodger
+    Stadium) filled by interpolating between neighbours."""
+    vals = np.array([park[k] if park[k] is not None else np.nan for k in DIM_KEYS], float)
+    ok = ~np.isnan(vals)
+    return np.interp(ANGLES, ANGLES[ok], vals[ok]).tolist()
+
+
 def fence_distance(angle, park) -> np.ndarray:
     """Wall distance at a spray angle, linearly interpolated between the 7
     published points (assumed evenly spaced at 15 deg). Foul territory clamps to the line."""
-    prof = [park[k] for k in DIM_KEYS]
-    return np.interp(angle, ANGLES, prof)
+    return np.interp(angle, ANGLES, fence_profile(park))
 
 
 def load_seatmap(venue_id: int):

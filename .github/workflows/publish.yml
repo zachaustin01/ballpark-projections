@@ -1,0 +1,59 @@
+name: Build projections and deploy
+
+on:
+  schedule:
+    - cron: "0 14,17,20,23 * * *"  # UTC; refreshes as lineups get posted
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:  # build check only, never deploys
+
+permissions:
+  contents: read
+  id-token: write  # keyless auth to Google Cloud (Workload Identity Federation)
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Today's date (cache key)
+        id: day
+        run: echo "d=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4  # one save per day; later runs restore it and skip saving
+        with:
+          path: data/statcast
+          key: statcast-store-${{ steps.day.outputs.d }}
+          restore-keys: statcast-store-
+      - run: uv sync
+
+      - name: Export projections (today + tomorrow)
+        if: github.event_name != 'pull_request'
+        run: uv run ballpark export
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci && npm run build
+        working-directory: web
+
+      - name: Authenticate to Google Cloud
+        if: github.event_name != 'pull_request'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - name: Deploy to Firebase Hosting
+        if: github.event_name != 'pull_request'
+        run: npx --yes firebase-tools@13 deploy --only hosting --project "${{ vars.GCP_PROJECT_ID }}" --non-interactive
