@@ -5,7 +5,8 @@ uv sync
 uv run ballpark parks                         # all 30 parks -> data/ballparks.{json,csv}
 uv run ballpark slate --date 2026-10-14       # games, lineups, SPs + Statcast summaries
 uv run ballpark project --date 2026-10-14     # HR / foul seat-zone projections -> output/
-uv run streamlit run src/ballpark/app.py      # UI: pick a date + game, see heatmaps
+uv run ballpark export                        # write static JSON for the site -> web/public/data/
+cd web && npm install && npm run dev          # UI at http://localhost:5173
 ```
 
 Data: MLB Stats API (parks, schedule, lineups, probable pitchers) and Statcast via pybaseball (cached in `data/cache/`).

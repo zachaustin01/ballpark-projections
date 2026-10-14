@@ -3,7 +3,7 @@ name = "ballpark"
 version = "0.1.0"
 description = "MLB ballparks, Statcast lineups/pitchers, and foul/HR seat-zone projections"
 requires-python = ">=3.11,<3.14"
-dependencies = ["streamlit", "pandas", "numpy", "requests", "pybaseball", "pyarrow", "matplotlib"]
+dependencies = ["pandas", "numpy", "requests", "pybaseball", "pyarrow", "matplotlib"]
 
 [project.scripts]
 ballpark = "ballpark.cli:main"
