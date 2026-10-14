@@ -9,7 +9,7 @@ uv run ballpark export                        # write static JSON for the site -
 cd web && npm install && npm run dev          # UI at http://localhost:5173
 ```
 
-Data: MLB Stats API (parks, schedule, lineups, probable pitchers) and Statcast via pybaseball (cached in `data/cache/`).
+Data: MLB Stats API (parks, schedule, lineups, probable pitchers) and Statcast via pybaseball. Statcast is kept as a local league-wide store (one parquet per game day in `data/statcast/`, ~11 MB/year): `uv run ballpark sync` backfills 365 days in ~30 s, and every command auto-syncs missing days.
 Lineups only exist once teams post them (usually a few hours before first pitch); `project` skips games without them.
 
 ## Model assumptions (v0)

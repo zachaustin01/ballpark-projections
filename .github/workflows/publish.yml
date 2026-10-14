@@ -27,9 +27,9 @@ jobs:
           enable-cache: true
       - uses: actions/cache@v4
         with:
-          path: data/cache
-          key: statcast-${{ github.run_id }}
-          restore-keys: statcast-
+          path: data/statcast
+          key: statcast-store-${{ github.run_id }}
+          restore-keys: statcast-store-
       - run: uv sync
 
       - name: Export projections (today + tomorrow)

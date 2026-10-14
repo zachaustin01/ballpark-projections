@@ -63,6 +63,14 @@ def cmd_project(a):
             print(z.head(a.top).assign(exp=lambda d: d.exp.round(3)).to_string(index=False))
 
 
+def cmd_sync(a):
+    from . import store
+    end = a.through or (date.today() - timedelta(days=1)).isoformat()
+    start = (date.fromisoformat(end) - timedelta(days=a.days)).isoformat()
+    n = store.sync(start, end)
+    print(f"done ({n} days fetched)")
+
+
 def cmd_export(a):
     from .export import export_range
     today = date.today()
@@ -85,6 +93,10 @@ def main():
         else:
             p.add_argument("--game", type=int, help="gamePk")
             p.add_argument("--top", type=int, default=12)
+    p = sub.add_parser("sync", help="update the local league-wide Statcast store")
+    p.add_argument("--days", type=int, default=365)
+    p.add_argument("--through", help="last day to fetch (default: yesterday)")
+    p.set_defaults(fn=cmd_sync)
     p = sub.add_parser("export", help="write static JSON for the web front end")
     p.add_argument("--date", help="start date (default: today)")
     p.add_argument("--through", help="end date inclusive (default: --date, or tomorrow if no --date)")
