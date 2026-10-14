@@ -41,13 +41,15 @@ def _write(path, obj):
 
 
 def _cells(df: pd.DataFrame) -> list:
+    """[x_ft, y_ft, expected, zone_idx] per grid cell; zone_idx indexes projection.zones
+    (-1 = a zone outside the listed top ones)."""
     if df.empty:
         return []
     g = df.assign(cx=(df.x / CELL_FT).round().astype(int) * CELL_FT,
                   cy=(df.y / CELL_FT).round().astype(int) * CELL_FT)
-    g = g.groupby(["cx", "cy"], as_index=False).exp.sum()
+    g = g.groupby(["cx", "cy", "zi"], as_index=False).exp.sum()
     g = g[g.exp > MIN_EXP]
-    return [[int(r.cx), int(r.cy), round(float(r.exp), 4)] for r in g.itertuples()]
+    return [[int(r.cx), int(r.cy), round(float(r.exp), 4), int(r.zi)] for r in g.itertuples()]
 
 
 def _side(g, s, date_, days, with_stats=True):
@@ -95,10 +97,11 @@ def game_detail(g, parks, date_, days):
     proj = {"totals": {}, "cells": {}, "zones": {}, "batters": {}}
     for kind in ("HR", "FOUL"):
         k = res[res.kind == kind]
+        top = k.groupby("zone").exp.sum().sort_values(ascending=False).head(12)
+        k = k.assign(zi=k.zone.map({z: i for i, z in enumerate(top.index)}).fillna(-1).astype(int))
         proj["totals"][kind] = {s: round(float(k[k.side == s].exp.sum()), 3) for s in ("away", "home")}
         proj["cells"][kind] = {s: _cells(k[k.side == s]) for s in ("away", "home")}
-        z = k.groupby("zone", as_index=False).exp.sum().sort_values("exp", ascending=False).head(12)
-        proj["zones"][kind] = [{"zone": r.zone, "exp": round(float(r.exp), 3)} for r in z.itertuples()]
+        proj["zones"][kind] = [{"zone": z, "exp": round(float(e), 3)} for z, e in top.items()]
         b = k.groupby("batter").exp.sum()
         proj["batters"][kind] = {n: round(float(v), 3) for n, v in b.items()}
     out["projection"] = proj

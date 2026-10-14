@@ -20,7 +20,31 @@ const fmtTime = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
 const COLS: [string, string][] = [["PA", "PA"], ["EV", "EV"], ["Brl%", "Brl%"], ["HH%", "HH%"], ["HR", "HR"], ["Foul/PA", "F/PA"]];
+const OPTIONAL = new Set(["PA", "HH%"]); // hidden on narrow screens so batter names fit
 const fmt = (v: number | null | undefined) => (v == null ? "–" : String(v));
+
+function Help({ open = false, days = 365 }: { open?: boolean; days?: number }) {
+  return (
+    <details className="help card" open={open}>
+      <summary>How to use this page</summary>
+      <ol>
+        <li><b>Pick a day and a game.</b> Use the ‹ › arrows or the date menu at the top, then choose a game from the list.</li>
+        <li><b>Read the heatmap.</b> It's the ballpark seen from above, home plate at the bottom. The yellow line is the outfield wall. Darker red means more expected home runs (or foul balls) land there.</li>
+        <li><b>Switch what you see.</b> “Home runs” and “Foul balls” change the map. “Both / away / home bats” shows one team's hitters or both.</li>
+        <li><b>Zoom in on a zone.</b> Click any row under “Hottest zones” to show only that zone on the map and its expected count. Click it again, or “show all”, to clear it.</li>
+        <li><b>Check the lineups.</b> Each team's starter and batting order are listed with their Statcast numbers: PA (plate appearances), EV (average exit velocity, mph), Brl% (barrel rate), HH% (share of balls hit 95+ mph), HR, F/PA (foul balls per PA), and xHR (expected home runs in this game).</li>
+      </ol>
+      <h4>Good to know</h4>
+      <ul>
+        <li>Numbers are expected counts for this game, built from each batter's last {days} days of Statcast and the opposing starter's tendencies. They are estimates, not predictions of a specific seat.</li>
+        <li>A lineup tagged <i>projected</i> hasn't been posted yet; it's the team's most recent lineup against a starter who throws with the same hand. It updates when the real one is posted.</li>
+        <li>Foul-ball landing spots are estimated from exit velocity and launch angle, because Statcast doesn't record where most fouls land. Home runs ignore wall height and weather.</li>
+        <li>Zones are angle-and-distance areas of the field, not stadium seat sections.</li>
+        <li>Data refreshes several times a day as lineups come out.</li>
+      </ul>
+    </details>
+  );
+}
 
 function Lineup({ side, fx }: { side: TeamSide; fx: Record<string, number> }) {
   const proj = side.lineup_source !== "posted";
@@ -37,12 +61,12 @@ function Lineup({ side, fx }: { side: TeamSide; fx: Record<string, number> }) {
         <>
           {proj && <p className="badge">Lineup {side.lineup_source}</p>}
           <table>
-            <thead><tr><th>#</th><th>Batter</th>{COLS.map(([, l]) => <th key={l}>{l}</th>)}<th>xHR</th></tr></thead>
+            <thead><tr><th>#</th><th>Batter</th>{COLS.map(([k, l]) => <th key={l} className={OPTIONAL.has(k) ? "opt" : undefined}>{l}</th>)}<th>xHR</th></tr></thead>
             <tbody>
               {side.lineup.map((b) => (
                 <tr key={b.id}>
                   <td>{b.slot}</td><td>{b.name}</td>
-                  {COLS.map(([k]) => <td key={k}>{fmt((b.stats as Stats)[k])}</td>)}
+                  {COLS.map(([k]) => <td key={k} className={OPTIONAL.has(k) ? "opt" : undefined}>{fmt((b.stats as Stats)[k])}</td>)}
                   <td>{fx[b.name] != null ? fx[b.name].toFixed(2) : "–"}</td>
                 </tr>
               ))}
@@ -57,12 +81,16 @@ function Lineup({ side, fx }: { side: TeamSide; fx: Record<string, number> }) {
 function GameView({ g }: { g: GameDetail }) {
   const [kind, setKind] = useState<Kind>("HR");
   const [team, setTeam] = useState<"both" | Side>("both");
+  const [zone, setZone] = useState<number | null>(null); // selected zone index
   const p = g.projection;
-  const cells = useMemo(() => {
+  const allCells = useMemo(() => {
     if (!p) return [];
     return team === "both" ? [...p.cells[kind].away, ...p.cells[kind].home] : p.cells[kind][team];
   }, [p, kind, team]);
+  const cells = useMemo(() => (zone == null ? allCells : allCells.filter((c) => c[3] === zone)), [allCells, zone]);
+  const scaleMax = useMemo(() => Math.max(...allCells.map((c) => c[2]), 1e-9), [allCells]);
   const total = p ? (team === "both" ? p.totals[kind].away + p.totals[kind].home : p.totals[kind][team]) : 0;
+  const zoneTotal = zone == null ? total : cells.reduce((a, c) => a + c[2], 0);
 
   return (
     <>
@@ -70,12 +98,13 @@ function GameView({ g }: { g: GameDetail }) {
         <h2>{g.away.team} @ {g.home.team}</h2>
         <p className="muted">{g.venue.name} · {fmtTime(g.time)} · {g.status} · capacity {g.venue.capacity?.toLocaleString()} · elev {g.venue.elevation_ft} ft</p>
       </header>
+      <Help days={g.lookback_days} />
       {!p ? <p className="notice">{g.projection_note ?? "No projection available."}</p> : (
         <section className="card viz">
           <div className="controls">
             <div className="seg" role="tablist">
               {(["HR", "FOUL"] as Kind[]).map((k) => (
-                <button key={k} className={kind === k ? "on" : ""} onClick={() => setKind(k)}>
+                <button key={k} className={kind === k ? "on" : ""} onClick={() => { setKind(k); setZone(null); }}>
                   {k === "HR" ? "Home runs" : "Foul balls (est.)"}
                 </button>
               ))}
@@ -89,13 +118,23 @@ function GameView({ g }: { g: GameDetail }) {
             </div>
           </div>
           <div className="viz-body">
-            <Field kind={kind} cells={cells} fence={g.venue.fence} />
+            <Field kind={kind} cells={cells} fence={g.venue.fence} scaleMax={scaleMax} />
             <div className="side-panel">
-              <div className="big">{total.toFixed(kind === "HR" ? 2 : 1)}</div>
-              <div className="muted">expected {kind === "HR" ? "home runs" : "foul balls"}</div>
-              <h4>Hottest zones</h4>
+              <div className="big">{zoneTotal.toFixed(kind === "HR" ? 2 : 1)}</div>
+              <div className="muted">
+                expected {kind === "HR" ? "home runs" : "foul balls"}
+                {zone != null && <> in <b>{p.zones[kind][zone]?.zone}</b></>}
+              </div>
+              <h4>Hottest zones {zone != null && <button className="link" onClick={() => setZone(null)}>show all</button>}</h4>
               <ol className="zones">
-                {p.zones[kind].slice(0, 8).map((z) => <li key={z.zone}><span>{z.zone}</span><b>{z.exp.toFixed(2)}</b></li>)}
+                {p.zones[kind].slice(0, 12).map((z, i) => (
+                  <li key={z.zone}>
+                    <button className={`zone-btn ${zone === i ? "on" : ""}`} aria-pressed={zone === i}
+                      onClick={() => setZone(zone === i ? null : i)}>
+                      <span>{z.zone}</span><b>{z.exp.toFixed(2)}</b>
+                    </button>
+                  </li>
+                ))}
               </ol>
               {kind === "FOUL" && <p className="muted small">Foul landing spots are estimated from exit velocity and launch angle; Statcast doesn’t record them.</p>}
             </div>
@@ -165,7 +204,7 @@ export default function App() {
           {day && day.games.length === 0 && <p className="muted">No games exported for this date.</p>}
         </aside>
         <div className="detail">
-          {!pk && <p className="muted pad">Select a game to see its projection.</p>}
+          {!pk && (<><p className="muted pad">Select a game to see its projection.</p><Help open /></>)}
           {pk && !game && !err && <p className="muted pad">Loading…</p>}
           {game && <GameView key={game.game_pk} g={game} />}
         </div>

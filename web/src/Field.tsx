@@ -21,7 +21,7 @@ function color(t: number): string {
   return `hsla(${h}, 95%, ${60 - 20 * t}%, ${0.25 + 0.7 * t})`;
 }
 
-export default function Field({ kind, cells, fence }: { kind: Kind; cells: Cell[]; fence: number[] }) {
+export default function Field({ kind, cells, fence, scaleMax }: { kind: Kind; cells: Cell[]; fence: number[]; scaleMax?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export default function Field({ kind, cells, fence }: { kind: Kind; cells: Cell[
     ctx.fillStyle = "rgba(200,161,101,.65)"; ctx.fill();
 
     // heat
-    const max = Math.max(...cells.map((c) => c[2]), 1e-9);
+    const max = scaleMax ?? Math.max(...cells.map((c) => c[2]), 1e-9);
     ctx.filter = "blur(3px)";
     for (const [x, y, e] of cells) {
       ctx.fillStyle = color(Math.sqrt(e / max));
@@ -78,7 +78,7 @@ export default function Field({ kind, cells, fence }: { kind: Kind; cells: Cell[
       const d = fenceAt(a, fence), [x, y] = polar(a, d);
       ctx.fillText(`${Math.round(d)}`, X(x) - 9, Y(y) + (a === 0 ? 14 : 14));
     });
-  }, [kind, cells, fence]);
+  }, [kind, cells, fence, scaleMax]);
 
   return <canvas ref={ref} className="field" role="img" aria-label={`${kind} landing heatmap`} />;
 }
