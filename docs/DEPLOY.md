@@ -53,7 +53,7 @@ gcloud billing projects describe ballpark-projections-za --format="value(billing
 |---|---|---|---|
 | GitHub Actions (public repo) | free | ~1-2 min/run (first deploy took 74 s) x 4/day | $0 |
 | Actions cache | free, 10 GB per repo | ~6 MB Statcast store (compressed) + ~120 MB npm/uv caches | $0 |
-| Firebase Hosting storage | Spark, 10 GB | ~7 MB per deploy (site ~1 MB + ~15 games/day x 2 days x ~0.2 MB JSON) | $0, see "Release history" below |
+| Firebase Hosting storage | Spark, 10 GB | 1 release kept (~0.15 MB at 2 postseason games; a full 15-game regular-season slate is a few MB) | $0 |
 | Firebase Hosting transfer | Spark, ~360 MB/day | ~87 KB for the first game a visitor opens (50 KB app + 37 KB game data, gzipped), ~37 KB per extra game; app JS is cached by the browser | $0 up to roughly 2,000-4,000 visits/day |
 | Baseball Savant / MLB Stats API | public, no key | ~1 day of Statcast per run | $0 |
 | Cloud Storage, Cloud Run, databases | not used | | $0 |
@@ -67,10 +67,19 @@ from secondary sources.
 serving the last release). If daily transfer is exceeded, expect the site to stop serving until the quota resets.
 Neither produces a bill.
 
-### Release history (do this once)
-Firebase keeps every release for rollback and counts them against the 10 GB. At 4 deploys/day that could add up
-over months. In the console: Hosting -> *Release history* (or the site's settings) -> limit the number of releases
-to keep (e.g. 10). See [Manage hosting resources](https://firebase.google.com/docs/hosting/manage-hosting-resources).
+### Release history
+Firebase keeps old releases for rollback and counts them against the 10 GB storage, and the live channel keeps
+**all of them by default**. We don't need rollback (revert in git and redeploy instead), so the live channel is set
+to keep only the current release (done 2026-10-14):
+
+```bash
+curl -X PATCH -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "x-goog-user-project: ballpark-projections-za" -H "Content-Type: application/json" \
+  "https://firebasehosting.googleapis.com/v1beta1/projects/ballpark-projections-za/sites/ballpark-projections-za/channels/live?updateMask=retainedReleaseCount" \
+  -d '{"retainedReleaseCount":1}'
+```
+Console: https://console.firebase.google.com/project/ballpark-projections-za/hosting/sites/ballpark-projections-za
+See [Manage hosting resources](https://firebase.google.com/docs/hosting/manage-hosting-resources).
 
 ### If traffic outgrows the free plan
 Upgrading means attaching a billing account (Blaze), which makes costs possible. If you do:
