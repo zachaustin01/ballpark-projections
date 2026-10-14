@@ -57,12 +57,16 @@ function Lineup({ side, fx }: { side: TeamSide; fx: Record<string, number> }) {
 function GameView({ g }: { g: GameDetail }) {
   const [kind, setKind] = useState<Kind>("HR");
   const [team, setTeam] = useState<"both" | Side>("both");
+  const [zone, setZone] = useState<number | null>(null); // selected zone index
   const p = g.projection;
-  const cells = useMemo(() => {
+  const allCells = useMemo(() => {
     if (!p) return [];
     return team === "both" ? [...p.cells[kind].away, ...p.cells[kind].home] : p.cells[kind][team];
   }, [p, kind, team]);
+  const cells = useMemo(() => (zone == null ? allCells : allCells.filter((c) => c[3] === zone)), [allCells, zone]);
+  const scaleMax = useMemo(() => Math.max(...allCells.map((c) => c[2]), 1e-9), [allCells]);
   const total = p ? (team === "both" ? p.totals[kind].away + p.totals[kind].home : p.totals[kind][team]) : 0;
+  const zoneTotal = zone == null ? total : cells.reduce((a, c) => a + c[2], 0);
 
   return (
     <>
@@ -75,7 +79,7 @@ function GameView({ g }: { g: GameDetail }) {
           <div className="controls">
             <div className="seg" role="tablist">
               {(["HR", "FOUL"] as Kind[]).map((k) => (
-                <button key={k} className={kind === k ? "on" : ""} onClick={() => setKind(k)}>
+                <button key={k} className={kind === k ? "on" : ""} onClick={() => { setKind(k); setZone(null); }}>
                   {k === "HR" ? "Home runs" : "Foul balls (est.)"}
                 </button>
               ))}
@@ -89,13 +93,23 @@ function GameView({ g }: { g: GameDetail }) {
             </div>
           </div>
           <div className="viz-body">
-            <Field kind={kind} cells={cells} fence={g.venue.fence} />
+            <Field kind={kind} cells={cells} fence={g.venue.fence} scaleMax={scaleMax} />
             <div className="side-panel">
-              <div className="big">{total.toFixed(kind === "HR" ? 2 : 1)}</div>
-              <div className="muted">expected {kind === "HR" ? "home runs" : "foul balls"}</div>
-              <h4>Hottest zones</h4>
+              <div className="big">{zoneTotal.toFixed(kind === "HR" ? 2 : 1)}</div>
+              <div className="muted">
+                expected {kind === "HR" ? "home runs" : "foul balls"}
+                {zone != null && <> in <b>{p.zones[kind][zone]?.zone}</b></>}
+              </div>
+              <h4>Hottest zones {zone != null && <button className="link" onClick={() => setZone(null)}>show all</button>}</h4>
               <ol className="zones">
-                {p.zones[kind].slice(0, 8).map((z) => <li key={z.zone}><span>{z.zone}</span><b>{z.exp.toFixed(2)}</b></li>)}
+                {p.zones[kind].slice(0, 12).map((z, i) => (
+                  <li key={z.zone}>
+                    <button className={`zone-btn ${zone === i ? "on" : ""}`} aria-pressed={zone === i}
+                      onClick={() => setZone(zone === i ? null : i)}>
+                      <span>{z.zone}</span><b>{z.exp.toFixed(2)}</b>
+                    </button>
+                  </li>
+                ))}
               </ol>
               {kind === "FOUL" && <p className="muted small">Foul landing spots are estimated from exit velocity and launch angle; Statcast doesn’t record them.</p>}
             </div>

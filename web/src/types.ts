@@ -1,7 +1,7 @@
 export type Stats = Record<string, number | null>;
 export type Kind = "HR" | "FOUL";
 export type Side = "away" | "home";
-export type Cell = [number, number, number]; // x ft, y ft, expected count
+export type Cell = [number, number, number, number]; // x ft, y ft, expected count, zone index (-1 = other)
 
 export interface RootIndex { dates: string[]; updated: string }
 export interface GameSummary {
