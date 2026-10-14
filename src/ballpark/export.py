@@ -13,7 +13,7 @@ import pandas as pd
 
 from . import statcast as sc
 from .ballparks import load_ballparks
-from .geometry import DIM_KEYS
+from .geometry import fence_profile
 from .model import project_game
 from .paths import WEB_DATA
 from .schedule import get_slate
@@ -75,7 +75,7 @@ def game_detail(g, parks, date_, days):
         "game_pk": g["game_pk"], "date": date_, "time": g["time"], "status": g["status"],
         "venue": {"id": int(g["venue_id"]), "name": park["name"], "capacity": park["capacity"],
                   "elevation_ft": park["elevation_ft"], "roof": park["roof"],
-                  "fence": [park[k] for k in DIM_KEYS]},
+                  "fence": [round(v, 1) for v in fence_profile(park)]},
         "away": _side(g, "away", date_, days), "home": _side(g, "home", date_, days),
         "lookback_days": days, "generated_at": datetime.now(timezone.utc).isoformat(),
         "projection": None,
@@ -83,7 +83,7 @@ def game_detail(g, parks, date_, days):
     if not (g["away"]["lineup"] and g["home"]["lineup"]):
         out["projection_note"] = "No lineup available for one or both teams yet."
         return out
-    if park[list(DIM_KEYS)].isna().any():
+    if park[["leftLine", "center", "rightLine"]].isna().any():
         out["projection_note"] = "Missing fence dimensions for this park."
         return out
     res = project_game(g, park, date_, days)
