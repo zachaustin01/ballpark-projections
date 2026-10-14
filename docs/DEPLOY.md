@@ -51,7 +51,7 @@ gcloud billing projects describe ballpark-projections-za --format="value(billing
 
 | Item | Plan | Measured / expected use | Cost |
 |---|---|---|---|
-| GitHub Actions (public repo) | free | ~3 min/run x 4/day | $0 |
+| GitHub Actions (public repo) | free | ~1-2 min/run (first deploy took 74 s) x 4/day | $0 |
 | Actions cache | free, 10 GB per repo | ~6 MB Statcast store (compressed) + ~120 MB npm/uv caches | $0 |
 | Firebase Hosting storage | Spark, 10 GB | ~7 MB per deploy (site ~1 MB + ~15 games/day x 2 days x ~0.2 MB JSON) | $0, see "Release history" below |
 | Firebase Hosting transfer | Spark, ~360 MB/day | ~87 KB for the first game a visitor opens (50 KB app + 37 KB game data, gzipped), ~37 KB per extra game; app JS is cached by the browser | $0 up to roughly 2,000-4,000 visits/day |
