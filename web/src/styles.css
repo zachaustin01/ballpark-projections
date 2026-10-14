@@ -46,3 +46,7 @@ th:nth-child(2), td:nth-child(2) { text-align: left; } th:first-child, td:first-
   .games { flex-direction: row; overflow-x: auto; } .gcard { min-width: 250px; } .top { padding: 10px 16px; }
   table { font-size: 12px; } th, td { padding: 4px 3px; }
 }
+
+.help summary { cursor: pointer; font-weight: 600; }
+.help ol, .help ul { margin: 10px 0 0; padding-left: 20px; } .help li { margin: 6px 0; }
+.help h4 { margin-top: 14px; }

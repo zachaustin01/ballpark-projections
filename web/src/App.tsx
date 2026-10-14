@@ -22,6 +22,29 @@ const fmtTime = (iso: string) =>
 const COLS: [string, string][] = [["PA", "PA"], ["EV", "EV"], ["Brl%", "Brl%"], ["HH%", "HH%"], ["HR", "HR"], ["Foul/PA", "F/PA"]];
 const fmt = (v: number | null | undefined) => (v == null ? "–" : String(v));
 
+function Help({ open = false, days = 365 }: { open?: boolean; days?: number }) {
+  return (
+    <details className="help card" open={open}>
+      <summary>How to use this page</summary>
+      <ol>
+        <li><b>Pick a day and a game.</b> Use the ‹ › arrows or the date menu at the top, then choose a game from the list.</li>
+        <li><b>Read the heatmap.</b> It's the ballpark seen from above, home plate at the bottom. The yellow line is the outfield wall. Darker red means more expected home runs (or foul balls) land there.</li>
+        <li><b>Switch what you see.</b> “Home runs” and “Foul balls” change the map. “Both / away / home bats” shows one team's hitters or both.</li>
+        <li><b>Zoom in on a zone.</b> Click any row under “Hottest zones” to show only that zone on the map and its expected count. Click it again, or “show all”, to clear it.</li>
+        <li><b>Check the lineups.</b> Each team's starter and batting order are listed with their Statcast numbers: PA (plate appearances), EV (average exit velocity, mph), Brl% (barrel rate), HH% (share of balls hit 95+ mph), HR, F/PA (foul balls per PA), and xHR (expected home runs in this game).</li>
+      </ol>
+      <h4>Good to know</h4>
+      <ul>
+        <li>Numbers are expected counts for this game, built from each batter's last {days} days of Statcast and the opposing starter's tendencies. They are estimates, not predictions of a specific seat.</li>
+        <li>A lineup tagged <i>projected</i> hasn't been posted yet; it's the team's most recent lineup against a starter who throws with the same hand. It updates when the real one is posted.</li>
+        <li>Foul-ball landing spots are estimated from exit velocity and launch angle, because Statcast doesn't record where most fouls land. Home runs ignore wall height and weather.</li>
+        <li>Zones are angle-and-distance areas of the field, not stadium seat sections.</li>
+        <li>Data refreshes several times a day as lineups come out.</li>
+      </ul>
+    </details>
+  );
+}
+
 function Lineup({ side, fx }: { side: TeamSide; fx: Record<string, number> }) {
   const proj = side.lineup_source !== "posted";
   return (
@@ -74,6 +97,7 @@ function GameView({ g }: { g: GameDetail }) {
         <h2>{g.away.team} @ {g.home.team}</h2>
         <p className="muted">{g.venue.name} · {fmtTime(g.time)} · {g.status} · capacity {g.venue.capacity?.toLocaleString()} · elev {g.venue.elevation_ft} ft</p>
       </header>
+      <Help days={g.lookback_days} />
       {!p ? <p className="notice">{g.projection_note ?? "No projection available."}</p> : (
         <section className="card viz">
           <div className="controls">
@@ -179,7 +203,7 @@ export default function App() {
           {day && day.games.length === 0 && <p className="muted">No games exported for this date.</p>}
         </aside>
         <div className="detail">
-          {!pk && <p className="muted pad">Select a game to see its projection.</p>}
+          {!pk && (<><p className="muted pad">Select a game to see its projection.</p><Help open /></>)}
           {pk && !game && !err && <p className="muted pad">Loading…</p>}
           {game && <GameView key={game.game_pk} g={game} />}
         </div>
