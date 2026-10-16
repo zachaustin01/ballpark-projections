@@ -36,6 +36,9 @@ jobs:
           restore-keys: statcast-store-
       - run: uv sync
 
+      - name: Guard - research/training code must not reach CI
+        run: python3 scripts/check_ci_isolation.py
+
       - name: Export projections (today + tomorrow)
         if: github.event_name != 'pull_request'
         run: uv run ballpark export
