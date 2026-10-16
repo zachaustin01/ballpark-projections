@@ -2,7 +2,8 @@ name: Build projections and deploy
 
 on:
   schedule:
-    - cron: "0 14,17,20,23 * * *"  # UTC; refreshes as lineups get posted
+    - cron: "0 14,17,20,23 * 3-10 *"  # UTC; in season (Mar-Oct), refreshes as lineups get posted
+    - cron: "0 14 * 1,2,11,12 *"  # UTC; offseason, once daily to keep the site fresh
   workflow_dispatch:
   push:
     branches: [main]
